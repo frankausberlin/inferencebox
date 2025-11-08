@@ -1,0 +1,14 @@
+{
+  "name": "dsbase",
+  "dockerFile": "Dockerfile",
+  "context": "..",
+  "extensions": [
+    "ms-vscode.vscode-typescript-next",
+    "esbenp.prettier-vscode"
+  ],
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash"
+  },
+  "forwardPorts": [3000],
+  "postCreateCommand": "npm install"
+}
