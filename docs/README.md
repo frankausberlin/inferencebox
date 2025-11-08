@@ -13,6 +13,7 @@ dsbase provides a containerized development environment for data science project
 - Automated configuration scripts
 - Dev container support for VS Code
 - Comprehensive documentation
+- Optional MCP Docker Server integration for enhanced container management
 
 ## Quick Start
 

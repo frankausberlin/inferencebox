@@ -1,13 +1,126 @@
 version: '3.8'
 
+networks:
+  dsbase-network:
+    driver: bridge
+
+volumes:
+  models:
+    driver: local
+  datasets:
+    driver: local
+  workspace:
+    driver: local
+  cache:
+    driver: local
+
 services:
-  dsbase:
+  datascience-env:
     build: .
+    container_name: datascience-env
     ports:
-      - "3000:3000"
+      - "8888:8888"
     env_file:
       - .env
+    environment:
+      - JUPYTER_TOKEN=${JUPYTER_TOKEN}
+      - JUPYTER_PASSWORD=${JUPYTER_PASSWORD}
     volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm start
+      - workspace:/home/jupyter/work
+      - datasets:/home/jupyter/datasets
+      - cache:/home/jupyter/.cache
+    networks:
+      - dsbase-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+
+  vllm-server:
+    image: vllm/vllm-openai:latest
+    container_name: vllm-server
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - VLLM_MODEL=${VLLM_MODEL_NAME}
+      - VLLM_GPU_MEMORY_UTILIZATION=${VLLM_GPU_MEMORY_UTILIZATION}
+      - VLLM_MAX_MODEL_LEN=${VLLM_MAX_MODEL_LEN}
+      - VLLM_HOST=${VLLM_HOST}
+      - VLLM_PORT=${VLLM_PORT}
+      - VLLM_TENSOR_PARALLEL_SIZE=${VLLM_TENSOR_PARALLEL_SIZE}
+      - VLLM_QUANTIZATION=${VLLM_QUANTIZATION}
+    volumes:
+      - models:/app/models
+      - cache:/root/.cache
+    networks:
+      - dsbase-network
+    runtime: nvidia
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
+    restart: unless-stopped
+    depends_on:
+      - datascience-env
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:latest
+    container_name: open-webui
+    ports:
+      - "3000:8080"
+    env_file:
+      - .env
+    environment:
+      - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
+      - WEBUI_HOST=${WEBUI_HOST}
+      - WEBUI_PORT=${WEBUI_PORT}
+    volumes:
+      - ./open-webui:/app/backend/data
+    networks:
+      - dsbase-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    depends_on:
+      vllm-server:
+        condition: service_healthy
+
+  # Optional MCP Docker Server for enhanced container management
+  # Uncomment the following service to enable MCP Docker integration
+  # mcp-docker-server:
+  #   image: python:3.11-slim
+  #   container_name: mcp-docker-server
+  #   command: >
+  #     sh -c "
+  #     pip install mcp-server-docker &&
+  #     mcp-server-docker
+  #     "
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   networks:
+  #     - dsbase-network
+  #   environment:
+  #     - DOCKER_HOST=unix:///var/run/docker.sock
+  #   restart: unless-stopped
+  #   profiles:
+  #     - mcp
