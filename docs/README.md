@@ -1,10 +1,10 @@
-# dsbase
+# inferencebox
 
 A comprehensive data science development environment.
 
 ## Overview
 
-dsbase provides a containerized development environment for data science projects, featuring hardware detection, automated configuration, and seamless development workflows.
+inferencebox provides a containerized development environment for data science projects, featuring hardware detection, automated configuration, and seamless development workflows.
 
 ## Features
 
@@ -13,14 +13,16 @@ dsbase provides a containerized development environment for data science project
 - Automated configuration scripts
 - Dev container support for VS Code
 - Comprehensive documentation
-- Optional MCP Docker Server integration for enhanced container management
+- **Ollama Integration**: Local LLM inference with Open WebUI interface
+- **Interactive Welcome Script**: System status display and usage hints
+- **Port Conflict Resolution**: Uses port 11435 for Ollama to avoid local conflicts
 
 ## Quick Start
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/dsbase.git
-   cd dsbase
+   git clone https://github.com/yourusername/inferencebox.git
+   cd inferencebox
    ```
 
 2. Run the configuration script:
@@ -43,13 +45,9 @@ This project uses:
 ## Documentation
 
 - [Setup Instructions](setup.md)
-- [Hardware Detection](hardware.md)
-- [Configuration](configuration.md)
-
-## Contributing
-
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+- [Vast.ai Deployment](vastai-deployment.md)
+- [Docker Configuration](Dockerfile.vastai.md)
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE](../LICENSE.md) file for details.

@@ -1,5 +1,5 @@
 {
-  "name": "dsbase",
+  "name": "inferencebox",
   "dockerComposeFile": "../docker-compose.yml",
   "service": "datascience-env",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
@@ -40,7 +40,7 @@
   },
   "forwardPorts": [
     8888,
-    8000,
+    11435,
     3000
   ],
   "portsAttributes": {
@@ -48,8 +48,8 @@
       "label": "Jupyter Lab",
       "onAutoForward": "notify"
     },
-    "8000": {
-      "label": "VLLM Server",
+    "11435": {
+      "label": "Ollama Server",
       "onAutoForward": "silent"
     },
     "3000": {

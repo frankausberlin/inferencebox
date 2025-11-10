@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Hardware Detection Script for dsbase
+# Hardware Detection Script for inferencebox
 # This script detects system hardware and provides configuration recommendations for vLLM
 
 echo "Detecting hardware..."

@@ -1,11 +1,12 @@
 #!/bin/bash
 
-# Configuration Script for dsbase
-# This script sets up the development environment and configures vLLM based on detected hardware
+# Configuration Script for inferencebox
+# This script sets up the development environment and configures Ollama based on detected hardware
+# Note: vLLM dependencies have been removed for Vast.ai compatibility
 
 set -e
 
-echo "Configuring dsbase environment..."
+echo "Configuring inferencebox environment..."
 
 # Check if .env exists, if not copy from .env.example
 if [ ! -f .env ]; then
@@ -32,14 +33,13 @@ VASTAI_INSTANCE=$(echo "$HW_OUTPUT" | grep "VASTAI_INSTANCE=" | cut -d'=' -f2)
 
 echo "Detected hardware: GPU_TYPE=$GPU_TYPE, GPU_COUNT=$GPU_COUNT, VRAM=$TOTAL_VRAM_MB MB, VASTAI=$VASTAI_INSTANCE"
 
-# Configure vLLM parameters based on hardware
-echo "Configuring vLLM parameters..."
+# Configure Ollama parameters based on hardware (replacing vLLM configuration)
+echo "Configuring Ollama parameters..."
 
-# Default values
-TENSOR_PARALLEL_SIZE=1
-MEMORY_UTILIZATION=0.9
-QUANTIZATION="none"
-MODEL_NAME="microsoft/DialoGPT-medium"
+# Default Ollama values
+OLLAMA_GPU_LAYERS=35
+OLLAMA_MAX_LOADED_MODELS=1
+OLLAMA_MAX_QUEUE=512
 
 # Function to test GPU availability
 test_gpu_availability() {
@@ -56,54 +56,49 @@ test_gpu_availability() {
 }
 
 if test_gpu_availability; then
-    echo "GPU is available and functional. Configuring for GPU inference."
-    # GPU-based configuration
-    TENSOR_PARALLEL_SIZE=$GPU_COUNT
+    echo "GPU is available and functional. Configuring for GPU inference with Ollama."
 
-    # Adjust memory utilization based on VRAM
-    if [ "$TOTAL_VRAM_MB" -gt 80000 ]; then  # > 80GB
-        MEMORY_UTILIZATION=0.95
-        MODEL_NAME="meta-llama/Llama-2-70b-chat-hf"
-        QUANTIZATION="awq"
-    elif [ "$TOTAL_VRAM_MB" -gt 40000 ]; then  # > 40GB
-        MEMORY_UTILIZATION=0.9
-        MODEL_NAME="meta-llama/Llama-2-13b-chat-hf"
-        QUANTIZATION="gptq"
-    elif [ "$TOTAL_VRAM_MB" -gt 24000 ]; then  # > 24GB
-        MEMORY_UTILIZATION=0.85
-        MODEL_NAME="microsoft/DialoGPT-large"
-        QUANTIZATION="none"
-    elif [ "$TOTAL_VRAM_MB" -gt 8000 ]; then  # > 8GB (for RTX 3060 Ti)
-        MEMORY_UTILIZATION=0.8
-        MODEL_NAME="microsoft/DialoGPT-medium"
-        QUANTIZATION="awq"
+    # Calculate GPU layers based on VRAM (rough estimate: ~2GB per layer for 7B models)
+    if [ "$TOTAL_VRAM_MB" -gt 49152 ]; then  # > 48GB
+        OLLAMA_GPU_LAYERS=35  # Full layers for high-end GPUs
+    elif [ "$TOTAL_VRAM_MB" -gt 24576 ]; then  # > 24GB
+        OLLAMA_GPU_LAYERS=24  # Partial offloading for 24GB GPUs
+    elif [ "$TOTAL_VRAM_MB" -gt 16384 ]; then  # > 16GB
+        OLLAMA_GPU_LAYERS=16  # Moderate offloading for 16GB GPUs
+    elif [ "$TOTAL_VRAM_MB" -gt 12288 ]; then  # > 12GB
+        OLLAMA_GPU_LAYERS=12  # Limited offloading for 12GB GPUs
+    elif [ "$TOTAL_VRAM_MB" -gt 8192 ]; then  # > 8GB
+        OLLAMA_GPU_LAYERS=8   # Minimal offloading for 8GB GPUs
     else  # <= 8GB
-        MEMORY_UTILIZATION=0.75
-        MODEL_NAME="distilgpt2"
-        QUANTIZATION="none"
+        OLLAMA_GPU_LAYERS=4   # Very limited for low-VRAM GPUs
+    fi
+
+    # Adjust max loaded models based on VRAM
+    if [ "$TOTAL_VRAM_MB" -gt 32768 ]; then  # > 32GB
+        OLLAMA_MAX_LOADED_MODELS=2
+    else
+        OLLAMA_MAX_LOADED_MODELS=1
     fi
 
     # Special handling for vast.ai instances
     if [ "$VASTAI_INSTANCE" = "true" ]; then
         echo "Configuring for vast.ai instance..."
-        # On vast.ai, be more conservative with memory usage
-        MEMORY_UTILIZATION=$(echo "scale=2; $MEMORY_UTILIZATION * 0.9" | bc)
-        # vast.ai often has variable hardware, so use more conservative settings
-        if [ "$GPU_COUNT" -gt 4 ]; then
-            TENSOR_PARALLEL_SIZE=4  # Limit to 4 for stability on vast.ai
-        fi
+        # On vast.ai, be more conservative with GPU layers
+        OLLAMA_GPU_LAYERS=$((OLLAMA_GPU_LAYERS * 3 / 4))
+        OLLAMA_MAX_QUEUE=256  # Reduce queue size for stability
+        echo "Adjusted for vast.ai: OLLAMA_GPU_LAYERS=${OLLAMA_GPU_LAYERS}, OLLAMA_MAX_QUEUE=${OLLAMA_MAX_QUEUE}"
     fi
 else
     # GPU required - fail gracefully
     echo "ERROR: GPU not available or not functional."
-    echo "This system requires GPU for vLLM operation."
+    echo "This system requires GPU for inference operations."
     echo "Please ensure you are running on GPU-enabled hardware (e.g., vast.ai GPU instances)."
     echo "Configuration failed. Exiting."
     exit 1
 fi
 
-# Update .env file with vLLM configuration
-echo "Updating .env file with vLLM configuration..."
+# Update .env file with Ollama configuration
+echo "Updating .env file with Ollama configuration..."
 
 # Function to update or add environment variable
 update_env_var() {
@@ -116,18 +111,16 @@ update_env_var() {
     fi
 }
 
-update_env_var "VLLM_TENSOR_PARALLEL_SIZE" "$TENSOR_PARALLEL_SIZE"
-update_env_var "VLLM_GPU_MEMORY_UTILIZATION" "$MEMORY_UTILIZATION"
-update_env_var "VLLM_QUANTIZATION" "$QUANTIZATION"
-update_env_var "VLLM_MODEL_NAME" "$MODEL_NAME"
+update_env_var "OLLAMA_GPU_LAYERS" "$OLLAMA_GPU_LAYERS"
+update_env_var "OLLAMA_MAX_LOADED_MODELS" "$OLLAMA_MAX_LOADED_MODELS"
+update_env_var "OLLAMA_MAX_QUEUE" "$OLLAMA_MAX_QUEUE"
 update_env_var "GPU_TYPE" "$GPU_TYPE"
 update_env_var "GPU_COUNT" "$GPU_COUNT"
 update_env_var "TOTAL_VRAM_MB" "$TOTAL_VRAM_MB"
 
-echo "vLLM Configuration:"
-echo "  Tensor Parallel Size: $TENSOR_PARALLEL_SIZE"
-echo "  Memory Utilization: $MEMORY_UTILIZATION"
-echo "  Quantization: $QUANTIZATION"
-echo "  Model: $MODEL_NAME"
+echo "Ollama Configuration:"
+echo "  GPU Layers: $OLLAMA_GPU_LAYERS"
+echo "  Max Loaded Models: $OLLAMA_MAX_LOADED_MODELS"
+echo "  Max Queue: $OLLAMA_MAX_QUEUE"
 
 echo "Configuration complete. Please review and update .env file with your settings."

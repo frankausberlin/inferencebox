@@ -1,304 +1,250 @@
-# Setup Instructions
+## LLM Setup: Ollama-Only Configuration
 
-This document provides detailed instructions for setting up the dsbase development environment.
+**These instructions supersede all previous model configurations and deployment guidelines.**
 
-## Prerequisites
+### LLM Architecture Overview
 
-- Docker and Docker Compose installed
-- VS Code with Dev Containers extension (optional)
-- Git
+This project uses a **streamlined Ollama-only setup** for reliable local LLM inference:
 
-## Installation
+- **Ollama (Primary)**: Local LLM inference with lightweight models, optimized for local development
+- **Open WebUI**: Web interface for interacting with Ollama models
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/yourusername/dsbase.git
-   cd dsbase
-   ```
+### Key Benefits
 
-2. **Run the configuration script:**
-   ```bash
-   ./scripts/configure.sh
-   ```
-   This script will:
-   - Create a `.env` file from `.env.example`
-   - Install Node.js dependencies
-   - Run hardware detection
+- **Simplified Architecture**: Single LLM provider reduces complexity
+- **Local-First**: Reliable local inference without cloud dependencies
+- **Cost-Effective**: Uses local resources exclusively
+- **Fast Startup**: No complex model loading or GPU optimization required
 
-3. **Update environment variables:**
-   Edit the `.env` file with your specific configuration:
-   ```bash
-   NODE_ENV=development
-   PORT=3000
-   DATABASE_URL=postgresql://user:password@localhost:5432/dsbase
-   SECRET_KEY=your-actual-secret-key
-   ```
+### Ollama Configuration (Primary, Local)
 
-## Development Environment Options
+**Recommended for local development and lightweight inference.**
 
-### Option 1: VS Code Dev Containers (Recommended for Remote Development)
+#### Supported Models
+- **Llama 3.2**: 1B, 3B parameters (excellent for local use)
+- **Qwen2.5**: 0.5B, 1.5B, 3B, 7B parameters
+- **Mistral**: 7B parameter models
+- **Phi-3**: 3.8B parameter model
 
-The Dev Container configuration provides a complete development environment with Python, Jupyter, and all necessary tools.
+#### Setup Steps
+1. Ollama is automatically configured and started
+2. Models are downloaded on first use via Open WebUI
+3. No GPU requirements (CPU-only operation supported)
+4. Persistent storage in Docker volume
 
-#### Optional MCP Docker Server Integration
+### Model Management
 
-The MCP Docker Server can be enabled for enhanced container management capabilities:
+#### Pulling New Models
 
-1. **Enable MCP Docker Server:**
-   ```bash
-   docker-compose --profile mcp up
-   ```
+To add new models to your Ollama setup, you have several options:
 
-2. **MCP Docker Server Features:**
-   - Programmatic container management (create, start, stop, remove)
-   - Real-time container logs and statistics
-   - Network and volume management
-   - Image building and management
-   - Integration with AI assistants for automated workflows
+**Option 1: Via Open WebUI (Recommended)**
+1. Access Open WebUI at `http://localhost:3000`
+2. Click on the model selector in the chat interface
+3. Search for available models in the Ollama library
+4. Click "Download" next to the desired model
+5. Wait for the download to complete (may take several minutes depending on model size and internet speed)
 
-3. **Benefits for Data Science:**
-   - Automated model deployment and scaling
-   - Containerized data processing pipelines
-   - Development environment orchestration
-   - Resource monitoring and optimization
-
-1. **Prerequisites:**
-   - VS Code with Dev Containers extension installed
-   - Docker and Docker Compose
-   - SSH access to vast.ai instance (if using remote)
-
-2. **Setup for Local Development:**
-   - Open the project in VS Code
-   - When prompted, click "Reopen in Container"
-   - The dev container will build and start automatically
-
-3. **Setup for vast.ai Remote Development:**
-   - SSH into your vast.ai instance
-   - Clone the repository: `git clone https://github.com/yourusername/dsbase.git`
-   - Configure your `.env` file with appropriate settings
-   - In VS Code, use "Remote-SSH: Connect to Host" to connect to vast.ai
-   - Open the cloned project folder
-   - When prompted, click "Reopen in Container"
-   - VS Code will build the dev container on the remote instance
-
-4. **Dev Container Features:**
-   - Python 3.12 environment with conda/mamba
-   - Jupyter Lab with extensions
-   - VLLM server for LLM inference
-   - Open WebUI for chat interface
-   - Volume mounting for persistent data
-   - GPU support for vast.ai instances
-   - Pre-installed development tools (black, isort, flake8, mypy)
-
-### Option 2: Docker Compose
-
+**Option 2: Via Docker Command Line**
 ```bash
-docker-compose up
+# Pull a specific model (replace 'model-name' with actual model name)
+docker-compose exec ollama ollama pull llama3.2:3b
+
+# List available models to pull
+docker-compose exec ollama ollama pull --help
 ```
 
-### Option 3: Local Development
-
-If you prefer local development:
-
+**Option 3: Via Ollama CLI (if accessing container directly)**
 ```bash
-npm install
-npm start
+# Access the Ollama container
+docker-compose exec ollama bash
+
+# Pull a model
+ollama pull llama3.2:1b
+
+# Exit container
+exit
 ```
 
-## Hardware Detection and vLLM Configuration
+#### Popular Models to Consider
+- `llama3.2:1b` - Fast, lightweight (1B parameters)
+- `llama3.2:3b` - Balanced performance (3B parameters)
+- `qwen2.5:3b` - Good multilingual support
+- `mistral:7b` - High quality responses (7B parameters)
+- `phi3:3.8b` - Efficient Microsoft model
 
-The setup includes automatic hardware detection and vLLM configuration. To run it manually:
+#### Model Switching in Open WebUI
 
+**Method 1: During Chat Creation**
+1. Open Open WebUI at `http://localhost:3000`
+2. Click the "+" button to create a new chat
+3. In the model selector dropdown, choose your desired model
+4. If the model isn't downloaded yet, you'll be prompted to download it
+5. Start chatting with the selected model
+
+**Method 2: Switching Models in Existing Chat**
+1. In an active chat, click on the model name/tag at the top of the chat
+2. Select a different model from the dropdown
+3. The chat will continue with the new model (conversation history is preserved)
+
+**Method 3: Default Model Settings**
+1. Click on your profile icon (top right)
+2. Go to "Settings" > "Models"
+3. Set a default model for new chats
+4. This model will be pre-selected when creating new conversations
+
+#### Advanced Model Management
+
+**Checking Downloaded Models**
 ```bash
-./scripts/hardware_detection.sh
+# List all downloaded models
+docker-compose exec ollama ollama list
+
+# Check model details
+docker-compose exec ollama ollama show llama3.2:3b
 ```
 
-This will display information about your CPU, memory, disk, and GPU (if available), and output configuration variables for vLLM.
-
-The `configure.sh` script automatically detects your hardware and configures vLLM parameters:
-
-- **GPU Type Detection**: NVIDIA, AMD, or CPU-only systems
-- **GPU Count**: Number of available GPUs
-- **VRAM Calculation**: Total GPU memory across all devices
-- **Tensor Parallelism**: Automatically set based on GPU count
-- **Memory Utilization**: Adjusted based on total VRAM (0.8-0.95)
-- **Quantization**: GPTQ/AWQ for memory efficiency on smaller GPUs
-- **Model Selection**: Appropriate model size based on hardware capabilities
-- **vast.ai Support**: Special handling for variable hardware configurations
-
-### Hardware-Specific Configurations
-
-- **High-End GPUs (>80GB VRAM)**: Llama-2-70B with AWQ quantization
-- **Mid-Range GPUs (24-80GB VRAM)**: Llama-2-13B with GPTQ quantization
-- **Entry-Level GPUs (<24GB VRAM)**: DialoGPT models without quantization
-- **CPU-Only Systems**: DistilGPT-2 for CPU inference
-- **vast.ai Instances**: Conservative memory usage and limited tensor parallelism for stability
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Port already in use:**
-   Change the port in `.env` or docker-compose.yml
-
-2. **Permission denied on scripts:**
-   Make scripts executable:
-   ```bash
-   chmod +x scripts/*.sh
-   ```
-
-3. **Docker build fails:**
-   Ensure Docker is running and you have sufficient disk space
-
-## Next Steps
-
-After setup, you can:
-- Start developing your data science applications
-- Customize the Docker configuration
-- Add additional services to docker-compose.yml
-- Extend the hardware detection script
-
-For more information, see the [README](../README.md).
-# Dev Container Setup for Remote Development
-
-## Overview
-
-This Dev Container configuration provides a complete Python data science development environment optimized for remote development on platforms like vast.ai. The setup includes:
-
-- Python 3.12 with conda/mamba environment management
-- Jupyter Lab with comprehensive extensions
-- VLLM server for large language model inference
-- Open WebUI for interactive chat interface
-- GPU support for accelerated computing
-- Volume mounting for persistent data storage
-- VS Code extensions for enhanced development experience
-
-## Configuration Files
-
-### devcontainer.json
-- Uses docker-compose.yml for multi-service setup
-- Configures Python interpreter and Jupyter settings
-- Sets up port forwarding for Jupyter (8888), VLLM (8000), and Open WebUI (3000)
-- Mounts workspace, datasets, and cache volumes
-- Includes recommended VS Code extensions for Python and Jupyter development
-
-### devcontainer/Dockerfile
-- Extends the base datascience-env image
-- Adds development tools (git, vim, htop, etc.)
-- Installs VS Code server for remote development
-- Adds Python development packages (pytest, black, isort, etc.)
-- Configures workspace directory structure
-
-## vast.ai Remote Development Setup
-
-1. **Launch vast.ai Instance:**
-   - Select an instance with sufficient GPU memory for your models
-   - Choose Ubuntu 20.04 or later as the base OS
-   - Ensure Docker and NVIDIA drivers are installed
-
-2. **Connect via SSH:**
-   ```bash
-   ssh root@your-vast-ai-instance-ip
-   ```
-
-3. **Clone and Configure:**
-   ```bash
-   git clone https://github.com/yourusername/dsbase.git
-   cd dsbase
-   cp .env.example .env
-   # Edit .env with your configuration
-   nano .env
-   ```
-
-4. **VS Code Remote Development:**
-   - Install "Remote Development" extension pack in VS Code
-   - Use "Remote-SSH: Connect to Host" command
-   - Enter: `ssh root@your-vast-ai-instance-ip`
-   - Open the cloned dsbase folder
-   - Click "Reopen in Container" when prompted
-   - VS Code will build the dev container remotely
-
-5. **Access Services:**
-   - Jupyter Lab: http://localhost:8888 (forwarded automatically)
-   - Open WebUI: http://localhost:3000 (forwarded automatically)
-   - VLLM API: http://localhost:8000 (available internally)
-
-## Environment Variables
-
-Configure the following in your `.env` file:
-
+**Removing Unused Models**
 ```bash
-# Jupyter
-JUPYTER_TOKEN=your-secure-token
-JUPYTER_PASSWORD=your-secure-password
+# Remove a specific model
+docker-compose exec ollama ollama rm llama3.2:1b
 
-# VLLM
-VLLM_MODEL=your-model-name
-VLLM_GPU_MEMORY_UTILIZATION=0.9
-VLLM_MAX_MODEL_LEN=4096
-
-# Open WebUI
-OPENAI_API_KEY=your-api-key
-WEBUI_SECRET_KEY=your-webui-secret
+# List models before removing to avoid mistakes
+docker-compose exec ollama ollama list
 ```
 
-## Volume Management
+**Model Performance Tuning**
+- Models run with GPU acceleration when available (configured in docker-compose.yml)
+- Adjust `OLLAMA_GPU_LAYERS` in docker-compose.yml for GPU memory usage
+- Monitor performance with `docker stats` and `docker-compose logs ollama`
 
-The configuration uses named volumes for data persistence:
-- `workspace`: Project files and notebooks
-- `datasets`: Training/validation data
-- `cache`: Model caches and temporary files
-- `models`: Downloaded models (for VLLM)
+**Troubleshooting Model Issues**
+- **Model won't download**: Check internet connection and available disk space
+- **Model not appearing in WebUI**: Restart Open WebUI container or check Ollama logs
+- **Slow model switching**: Ensure only one model is loaded at a time (configured in docker-compose.yml)
+- **Out of memory**: Reduce GPU layers or use smaller models
 
-## GPU Support
+### Hardware Requirements
+- **Recommended**: Any modern CPU/GPU (GPU optional for acceleration)
+- **Minimum**: 4GB RAM, modern CPU
+- **GPU Support**: Automatic detection and utilization when available
 
-For vast.ai instances with GPUs:
-- Ensure NVIDIA drivers are installed
-- The docker-compose.yml includes GPU device passthrough
-- VLLM service is configured with `runtime: nvidia`
+### Configuration Steps
 
-## Troubleshooting
+#### For Local Development (Ollama Only)
+1. **Basic Setup:**
+    ```bash
+    ./scripts/configure.sh
+    ```
+    - Ollama is configured automatically
+    - Open WebUI starts independently
+    - No vLLM dependency required
 
-### Common Issues:
+2. **Access Open WebUI:**
+    - URL: `http://localhost:3000`
+    - Select models from Ollama library
+    - Models download automatically on first use
 
-1. **Dev Container Build Fails:**
-   - Ensure Docker is running on the vast.ai instance
-   - Check available disk space: `df -h`
-   - Verify NVIDIA drivers: `nvidia-smi`
+#### For Vast.ai Deployment (Ollama Only)
+1. **Execute Configuration Script:**
+     ```bash
+     ./scripts/configure.sh
+     ```
+     This will automatically:
+     - Configure Ollama for optimal performance
+     - Set up GPU acceleration if available
+     - Configure Open WebUI to connect to Ollama
 
-2. **Port Forwarding Issues:**
-   - Check VS Code port forwarding settings
-   - Ensure ports are not blocked by firewall
-   - Verify services are running: `docker-compose ps`
+2. **Verify Configuration:**
+      Check your `.env` file for the following settings:
+      ```
+      OLLAMA_HOST=0.0.0.0:11435
+      OPENAI_API_BASE_URL=http://ollama:11435/v1
+      ```
 
-3. **GPU Not Detected:**
-   - Run `nvidia-smi` to verify GPU availability
-   - Check Docker GPU runtime: `docker info | grep -i runtime`
+3. **Interactive Welcome Script:**
+      After deployment, run the welcome script for system information:
+      ```bash
+      docker-compose exec datascience-env bash /usr/local/bin/welcome.sh
+      ```
+      Features:
+      - Displays GPU status and VRAM usage
+      - Shows service status (Ollama, Open WebUI, Jupyter)
+      - Lists available scripts and usage hints
+      - Provides Ollama port conflict resolution information
+      - Uses port 11435 (not default 11434) to avoid local Ollama conflicts
 
-4. **Memory Issues:**
-   - Adjust VLLM_GPU_MEMORY_UTILIZATION in .env
-   - Monitor GPU memory usage with `nvidia-smi`
+### Deployment Scenarios
 
-### Logs and Debugging:
+#### Local Development (Recommended Default)
+- **LLM**: Ollama only
+- **Startup**: Fast, reliable
+- **Models**: Lightweight, local inference
+- **Cost**: Free, uses local resources
+- **Use Case**: Development, testing, lightweight tasks
 
+#### Vast.ai Deployment (Ollama Only)
+For vast.ai instances, the configuration script automatically applies:
+- **GPU Acceleration**: Automatic GPU detection and utilization
+- **Memory Optimization**: Efficient resource usage for cloud instances
+- **Model Selection**: Lightweight models optimized for cloud environments
+- **Single LLM**: Streamlined Ollama-only operation
+
+### Troubleshooting
+
+#### Ollama Issues
+- **Model Download Fails**: Check internet connectivity and Ollama model availability
+- **Slow Performance**: Models may be running on CPU; ensure GPU layers are configured
+- **Port Conflicts**: Verify port 11435 is available (uses non-default port to avoid local Ollama conflicts)
+- **Local Ollama Conflict**: If running Ollama locally, use different ports (11435 for container, 11434 for local)
+
+
+#### Open WebUI Issues
+- **Won't Start**: Check that Ollama is healthy (no vLLM dependency)
+- **Model Not Available**: Pull models manually via `docker-compose exec ollama ollama pull <model>`
+- **Connection Issues**: Verify network connectivity between containers
+
+### Performance Tuning
+
+#### Ollama Monitoring
 ```bash
-# View container logs
-docker-compose logs datascience-env
-docker-compose logs vllm-server
+# Check Ollama status
+docker-compose exec ollama ollama list
+
+# Monitor resource usage
+docker stats
+
+# View Ollama logs
+docker-compose logs ollama
+```
+
+
+#### Open WebUI Monitoring
+```bash
+# WebUI logs
 docker-compose logs open-webui
 
-# Access container shell
-docker-compose exec datascience-env bash
-
-# Check GPU usage
-nvidia-smi
+# Health check
+curl http://localhost:3000/health
 ```
 
-## Performance Optimization
+### Service Architecture
 
-- Use SSD storage on vast.ai for better I/O performance
-- Configure appropriate model sizes based on GPU memory
-- Use volume caching for frequently accessed data
-- Monitor resource usage with `htop` and `nvidia-smi`
+The streamlined setup ensures reliable operation:
+
+- **Ollama Primary**: Core LLM inference service
+- **Open WebUI**: Web interface for model interaction
+- **Independent Operation**: All services start reliably together
+- **Local Focus**: Optimized for local development workflows
+
+### Migration Notes
+
+If upgrading from previous versions:
+1. vLLM service has been removed for simplicity
+2. Configuration now focuses exclusively on Ollama
+3. Enhanced reliability with single LLM provider
+4. Faster startup and reduced resource requirements
 
 ---
+
+**Note**: These instructions supersede all previous documentation. The Ollama-only setup provides reliable local LLM inference with simplified architecture.
